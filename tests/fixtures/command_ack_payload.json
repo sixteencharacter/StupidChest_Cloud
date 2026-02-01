@@ -1,0 +1,15 @@
+{
+  "meta": {
+    "schema": "command_ack/v1",
+    "deviceId": "test-device-001",
+    "ts": "2026-02-01T10:15:00Z",
+    "seq": 45,
+    "eventId": "evt-ack-001"
+  },
+  "data": {
+    "commandId": "cmd-unlock-001",
+    "status": "success",
+    "result": {"lockState": "unlocked"},
+    "executedAt": "2026-02-01T10:15:00Z"
+  }
+}
