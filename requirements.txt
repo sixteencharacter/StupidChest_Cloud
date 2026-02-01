@@ -1,0 +1,22 @@
+# FastAPI and server
+fastapi==0.109.2
+uvicorn[standard]==0.27.1
+pydantic==2.6.1
+pydantic-settings==2.1.0
+
+# Redis
+redis==5.0.1
+
+# MQTT - Using aiomqtt (async-native, formerly asyncio-mqtt)
+# Justification: aiomqtt is async-native which integrates cleanly with FastAPI's
+# async lifespan and avoids threading complexity. It provides a modern async/await
+# interface that matches FastAPI's async patterns.
+aiomqtt==2.0.0
+
+# Testing
+pytest>=8.0.0
+pytest-asyncio>=0.23.5
+httpx==0.26.0
+
+# Development
+python-dotenv==1.0.1
