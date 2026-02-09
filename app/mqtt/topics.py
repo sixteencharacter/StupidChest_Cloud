@@ -32,6 +32,8 @@ TOPIC_LOGS = "logs"
 TOPIC_COMMANDS = "commands"
 TOPIC_COMMANDS_ACK = "commands/+/ack"
 TOPIC_CONFIG = "config"
+TOPIC_CONFIG_DESIRED = "config/desired"
+TOPIC_CONFIG_REPORTED = "config/reported"
 
 
 def get_subscribe_topics() -> list[str]:
@@ -50,6 +52,7 @@ def get_subscribe_topics() -> list[str]:
         f"{prefix}/+/{TOPIC_KNOCK_RESULT}",
         f"{prefix}/+/{TOPIC_LOGS}",
         f"{prefix}/+/{TOPIC_COMMANDS_ACK}",
+        f"{prefix}/+/{TOPIC_CONFIG_REPORTED}",
     ]
 
 
@@ -151,4 +154,6 @@ def get_message_type_from_topic(topic: str) -> Optional[str]:
         return "logs"
     elif "/commands/" in topic and topic.endswith("/ack"):
         return "command_ack"
+    elif topic.endswith("/config/reported"):
+        return "config_reported"
     return None

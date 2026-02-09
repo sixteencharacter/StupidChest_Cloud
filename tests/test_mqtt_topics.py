@@ -111,12 +111,13 @@ class TestGetSubscribeTopics:
         """Test that all required topics are returned."""
         topics = get_subscribe_topics()
 
-        assert len(topics) == 5
+        assert len(topics) == 6
         assert any("telemetry" in t for t in topics)
         assert any("knock/live" in t for t in topics)
         assert any("knock/result" in t for t in topics)
         assert any("logs" in t for t in topics)
         assert any("commands/+/ack" in t for t in topics)
+        assert any("config/reported" in t for t in topics)
 
     def test_topics_have_wildcard(self):
         """Test that topics use + wildcard for device_id."""

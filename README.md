@@ -1,6 +1,6 @@
 # KnockLock IoT Backend
 
-Phase 2 implementation of the KnockLock IoT backend using FastAPI + Redis + MQTT.
+Phase 3 implementation of the KnockLock IoT backend using FastAPI + Redis + MQTT.
 
 ## Architecture
 
@@ -15,12 +15,16 @@ Phase 2 implementation of the KnockLock IoT backend using FastAPI + Redis + MQTT
                     (MQTT Client)
 ```
 
-## Features (Phase 2)
+## Features (Phase 3)
 
 - **MQTT Ingest**: Parse, validate, and store MQTT messages
 - **Event Stream**: All messages stored in Redis Stream for history
 - **Device State**: Real-time device state with online/offline detection
-- **REST API**: Get device state and events
+- **Config API**: Set desired config (REST + MQTT retained), ingest reported config
+- **Actions API**: Lock/Unlock/Learn commands via REST → MQTT publish
+- **Events API**: Cursor-based paginated event queries with filtering
+- **Stats API**: Knock statistics aggregation with configurable buckets
+- **REST API**: Full REST under /api/v1
 
 ## MQTT Library Choice
 
@@ -43,11 +47,11 @@ app/
 │   ├── health.py        # Health check endpoints
 │   ├── devices.py       # Device state and events endpoints
 │   ├── patterns.py      # Pattern endpoints (placeholder)
-│   └── users.py         # User endpoints (placeholder)
+│   
 ├── core/                # Core utilities
 │   ├── settings.py      # Pydantic settings
 │   ├── logging.py       # Logging configuration
-│   └── security.py      # Security utilities (placeholder)
+│   
 ├── mqtt/                # MQTT client and handlers
 │   ├── client.py        # MQTT client (connect/subscribe/publish)
 │   ├── topics.py        # Topic utilities and constants
@@ -222,11 +226,123 @@ Expected response:
 ### 8. Get Device Events
 
 ```bash
-# Get all events
-curl "http://localhost:8000/api/v1/devices/test-device-001/events" | jq
+# Get all events (cursor-based pagination)
+curl "http://localhost:8000/api/v1/devices/test-device-001/events?limit=10" | jq
 
 # Filter by event type
-curl "http://localhost:8000/api/v1/devices/test-device-001/events?event_type=telemetry&limit=10" | jq
+curl "http://localhost:8000/api/v1/devices/test-device-001/events?type=telemetry&limit=10" | jq
+
+# Filter knock_result by matched status
+curl "http://localhost:8000/api/v1/devices/test-device-001/events?type=knock_result&matched=true&limit=10" | jq
+
+# Time window
+curl "http://localhost:8000/api/v1/devices/test-device-001/events?from=2026-02-01T00:00:00Z&to=2026-02-02T00:00:00Z" | jq
+
+# Pagination: pass nextCursor from previous response
+curl "http://localhost:8000/api/v1/devices/test-device-001/events?cursor=1706788800000-0&limit=5" | jq
+
+# Latest events (newest first)
+curl "http://localhost:8000/api/v1/devices/test-device-001/events/latest?limit=5" | jq
+```
+
+### 9. Config – Set Desired Config
+
+```bash
+# PUT desired config for a device
+curl -X PUT http://localhost:8000/api/v1/devices/test-device-001/config \
+  -H "Content-Type: application/json" \
+  -d '{
+    "rev": 1,
+    "data": {"sensitivity": 0.8, "ledBrightness": 50, "autoLockMs": 30000}
+  }' | jq
+```
+
+### 10. Config – Get Config Snapshot
+
+```bash
+curl http://localhost:8000/api/v1/devices/test-device-001/config | jq
+```
+
+### 11. Config – MQTT Subscribe to Desired Config (device side)
+
+```bash
+# Subscribe to desired config topic (retained)
+docker exec knocklock-mosquitto mosquitto_sub -h localhost -p 1883 \
+  -t "knocklock/v1/devices/test-device-001/config/desired" -v
+```
+
+### 12. Config – Device Publishes Reported Config
+
+```bash
+docker exec knocklock-mosquitto mosquitto_pub -h localhost -p 1883 \
+  -t "knocklock/v1/devices/test-device-001/config/reported" \
+  -m '{
+    "meta": {"schema": "device.config.v1", "rev": 1, "ts": "2026-02-01T12:00:00Z"},
+    "data": {"sensitivity": 0.8, "ledBrightness": 50, "autoLockMs": 30000}
+  }'
+```
+
+### 13. Config – Sync Config
+
+```bash
+curl -X POST http://localhost:8000/api/v1/devices/test-device-001/config/sync | jq
+```
+
+### 14. Actions – Lock / Unlock
+
+```bash
+# Lock
+curl -X POST http://localhost:8000/api/v1/devices/test-device-001/actions/lock | jq
+
+# Unlock with optional duration
+curl -X POST http://localhost:8000/api/v1/devices/test-device-001/actions/unlock \
+  -H "Content-Type: application/json" \
+  -d '{"durationMs": 5000}' | jq
+```
+
+### 15. Actions – Learn Start / Stop
+
+```bash
+# Start learning
+curl -X POST http://localhost:8000/api/v1/devices/test-device-001/actions/learn/start \
+  -H "Content-Type: application/json" \
+  -d '{"sessionName": "secret-knock", "maxDurationMs": 10000}' | jq
+
+# Stop learning
+curl -X POST http://localhost:8000/api/v1/devices/test-device-001/actions/learn/stop \
+  -H "Content-Type: application/json" \
+  -d '{"saveAsPattern": true, "patternName": "secret-knock"}' | jq
+```
+
+### 16. MQTT – Subscribe to Commands (device side)
+
+```bash
+docker exec knocklock-mosquitto mosquitto_sub -h localhost -p 1883 \
+  -t "knocklock/v1/devices/test-device-001/commands" -v
+```
+
+### 17. MQTT – Publish Command Ack (device side)
+
+```bash
+# Device acknowledges a command (use commandId from action response)
+docker exec knocklock-mosquitto mosquitto_pub -h localhost -p 1883 \
+  -t "knocklock/v1/devices/test-device-001/commands/<commandId>/ack" \
+  -m '{
+    "meta": {"schema": "command_ack/v1", "ts": "2026-02-01T12:00:01Z"},
+    "data": {"commandId": "<commandId>", "status": "success"}
+  }'
+```
+
+### 18. Stats – Knock Stats
+
+```bash
+# Aggregate knock stats (1m buckets)
+curl "http://localhost:8000/api/v1/stats/knocks?deviceId=test-device-001&bucket=1m" | jq
+
+# With time window
+curl "http://localhost:8000/api/v1/stats/knocks?deviceId=test-device-001&bucket=5m&from=2026-02-01T00:00:00Z&to=2026-02-02T00:00:00Z" | jq
+
+# Supported buckets: 10s, 1m, 5m, 15m, 1h, 1d
 ```
 
 ## Development
@@ -280,7 +396,8 @@ Environment variables (see `.env.example`):
 | `MQTT_TOPIC_PREFIX` | knocklock/v1/devices | Topic prefix |
 | `ONLINE_TTL_SEC` | 30 | Seconds before device is considered offline |
 | `MAX_PAYLOAD_BYTES` | 256000 | Maximum MQTT payload size |
-| `EVENT_STREAM_MAXLEN` | 10000 | Maximum events in Redis stream |
+| `EVENT_STREAM_MAXLEN` | 10000 | Maximum events in Redis stream (legacy) |
+| `STREAM_MAXLEN` | 50000 | Max events kept in stream (XADD MAXLEN ~) |
 
 ## API Endpoints
 
@@ -296,7 +413,36 @@ Environment variables (see `.env.example`):
 | Endpoint | Method | Description |
 |----------|--------|-------------|
 | `/api/v1/devices/{deviceId}/state` | GET | Get device state snapshot |
-| `/api/v1/devices/{deviceId}/events` | GET | Get device events from stream |
+
+### Config
+
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/api/v1/devices/{deviceId}/config` | GET | Get desired + reported config snapshot |
+| `/api/v1/devices/{deviceId}/config` | PUT | Set desired config (publishes to MQTT retained) |
+| `/api/v1/devices/{deviceId}/config/sync` | POST | Issue SYNC_CONFIG command |
+
+### Actions
+
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/api/v1/devices/{deviceId}/actions/lock` | POST | Lock device |
+| `/api/v1/devices/{deviceId}/actions/unlock` | POST | Unlock device (optional `durationMs`) |
+| `/api/v1/devices/{deviceId}/actions/learn/start` | POST | Start pattern learning |
+| `/api/v1/devices/{deviceId}/actions/learn/stop` | POST | Stop pattern learning |
+
+### Events
+
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/api/v1/devices/{deviceId}/events` | GET | Query events (cursor pagination, filters) |
+| `/api/v1/devices/{deviceId}/events/latest` | GET | Most recent events (newest first) |
+
+### Stats
+
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/api/v1/stats/knocks` | GET | Aggregated knock stats (bucketized) |
 
 **Note**: Devices are auto-registered when the first MQTT message is received.
 No manual registration required.
@@ -307,22 +453,26 @@ No manual registration required.
 |-------------|------|-------------|
 | `knocklock:device_state:{deviceId}` | String (JSON) | Device state snapshot |
 | `knocklock:events` | Stream | All MQTT events |
+| `knocklock:config:desired:{deviceId}` | String (JSON) | Desired config |
+| `knocklock:config:reported:{deviceId}` | String (JSON) | Reported config from device |
 
-## Phase 2 Status
+## Phase 3 Status
 
 ✅ Completed:
 - MQTT message parsing and validation
 - Event stream persistence (Redis Stream)
 - Device state management with online/offline detection
-- Telemetry snapshot storage
-- Knock result summary storage
-- Device state REST API
-- Device events REST API
-- Pydantic v2 models for all payloads
+- Telemetry, knock result, and log processing
+- Config REST API (desired/reported) + MQTT retained publish
+- Actions REST API (lock/unlock/learn) → MQTT command dispatch
+- Command ack ingestion and device state update
+- Events query API with cursor-based pagination and filters
+- Knock stats aggregation API with bucketization
+- MQTT publisher abstraction (`app/mqtt/publisher.py`)
+- Pydantic v2 models for all payloads and API schemas
 
 🔲 Future Phases:
 - Knock pattern CRUD and matching
-- Command dispatch via MQTT
 - User authentication (JWT)
 - Real-time WebSocket streaming
 

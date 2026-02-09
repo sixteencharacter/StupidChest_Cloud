@@ -41,11 +41,16 @@ class Settings(BaseSettings):
     # Redis Keys
     EVENT_STREAM_KEY: str = "knocklock:events"
     DEVICE_STATE_KEY_PREFIX: str = "knocklock:device_state:"
+    DESIRED_CONFIG_KEY_PREFIX: str = "knocklock:config:desired:"
+    REPORTED_CONFIG_KEY_PREFIX: str = "knocklock:config:reported:"
 
     # Phase 2: Additional settings
     ONLINE_TTL_SEC: int = 30  # Device considered offline after this many seconds
     MAX_PAYLOAD_BYTES: int = 256000  # Max MQTT payload size
-    EVENT_STREAM_MAXLEN: int = 10000  # Approximate max events in stream
+    EVENT_STREAM_MAXLEN: int = 50000  # Approximate max events in stream
+
+    # Phase 3: Stream settings
+    STREAM_MAXLEN: int = 50000  # Max events kept in stream (trimmed with MAXLEN ~)
 
     @property
     def is_development(self) -> bool:

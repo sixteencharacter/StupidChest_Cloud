@@ -70,7 +70,7 @@ async def append_event(
     entry_id = await client.xadd(
         settings.EVENT_STREAM_KEY,
         event_data,
-        maxlen=settings.EVENT_STREAM_MAXLEN,
+        maxlen=settings.STREAM_MAXLEN,
         approximate=True,
     )
 

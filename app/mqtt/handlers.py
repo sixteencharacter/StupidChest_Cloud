@@ -24,6 +24,7 @@ from app.mqtt.topics import (
     parse_device_id_from_topic,
 )
 from app.storage.events import append_event
+from app.storage.redis import json_set
 from app.storage.state import (
     update_knock_result,
     update_last_log,
@@ -100,6 +101,8 @@ async def route_message(topic: str, payload: bytes) -> None:
             case "command_ack":
                 command_id = parse_command_id_from_ack_topic(topic)
                 await handle_command_ack(device_id, command_id, payload_dict)
+            case "config_reported":
+                await handle_config_reported(device_id, payload_dict)
             case _:
                 logger.warning(f"Unhandled message type: {message_type}")
     except ValidationError as e:
@@ -283,6 +286,43 @@ async def handle_command_ack(
     )
 
     # Update device lastSeen
-    await upsert_state(device_id, {})
+    await upsert_state(device_id, {
+        "lastCommandAck": {
+            "commandId": actual_command_id,
+            "status": data.status.value,
+            "ts": payload.meta.ts.isoformat() if payload.meta.ts else None,
+        },
+    })
 
     logger.info(f"Command ack processed: device={device_id}, command={actual_command_id}, status={data.status.value}")
+
+
+async def handle_config_reported(device_id: str, payload_dict: dict[str, Any]) -> None:
+    """
+    Handle config/reported messages from the device.
+
+    Stores the reported config in Redis and appends a stream event.
+    Payload shape (Wireless.pdf):
+        { "meta": { "schema": "device.config.v1", ... }, "data": { ... } }
+    """
+    from app.core.settings import get_settings
+
+    settings = get_settings()
+
+    # Store full payload as reported config
+    await json_set(
+        f"{settings.REPORTED_CONFIG_KEY_PREFIX}{device_id}",
+        payload_dict,
+    )
+
+    # Append event to stream
+    await append_event(
+        event_type="config_reported",
+        device_id=device_id,
+        payload=payload_dict,
+    )
+
+    # Touch device lastSeen
+    await upsert_state(device_id, {})
+
+    logger.info(f"Config reported processed: device={device_id}")
