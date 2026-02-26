@@ -3,6 +3,9 @@ FROM python:3.11-slim
 WORKDIR /app
 
 # Install system dependencies
+RUN apt-get update && apt-get upgrade -y
+RUN apt-get install -y ffmpeg
+
 RUN apt-get update && apt-get install -y --no-install-recommends \
     gcc \
     && rm -rf /var/lib/apt/lists/*

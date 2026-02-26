@@ -11,10 +11,13 @@ Routes:
     PUT    /api/v1/patterns/{patternId}           - Update (bumps version)
     DELETE /api/v1/patterns/{patternId}           - Delete
     POST   /api/v1/patterns/{patternId}/activate  - Activate for a device
+    POST   /api/v1/patterns/transcription         - transcribe voice recording to pattern
 """
 
-from fastapi import APIRouter, HTTPException, Query, status
-
+from fastapi import APIRouter, HTTPException, Query, status , UploadFile , File
+from io import BytesIO
+import scipy
+import numpy as np
 from app.core.logging import get_logger
 from app.models.pattern import (
     OperationAccepted,
@@ -35,6 +38,8 @@ from app.storage.patterns import (
     save_pattern,
     set_active_pattern,
 )
+
+from pydub import AudioSegment
 
 logger = get_logger(__name__)
 
@@ -245,3 +250,29 @@ async def activate_pattern(
         status="ACCEPTED",
         message=f"Pattern '{patternId}' activated for device '{body.deviceId}'.",
     )
+
+@router.post(
+    "/transcription",
+    status_code=status.HTTP_202_ACCEPTED,
+    summary="transcribe voice amplitude to the configurable pattern",
+    description=(
+        "Transcribe Pattern into system's friendly format"
+    ))
+async def transctibe_pattern(audio_sample : UploadFile = File()) :
+    audioFile = BytesIO(await audio_sample.read())
+    segment = AudioSegment.from_file(audioFile,format="webm")
+    wavAudio = BytesIO()
+    segment.export(wavAudio,format="wav")
+    sr , sdat = scipy.io.wavfile.read(wavAudio)
+    t = 1 / sr  * np.arange(len(sdat)) * 1000
+    thresh = (sdat < np.percentile(sdat,.95))
+    t_n1 = t[np.where(thresh==1)][1:]
+    t_n = t[np.where(thresh==1)][:-1]
+    t_diff = t_n1 - t_n
+    t_diff = t_diff[t_diff > 30]
+    
+    if len(t_diff) == 0 :
+        return [0]
+    
+    t_diff[0] = 0
+    return t_diff.astype(int).tolist()

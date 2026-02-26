@@ -8,6 +8,8 @@ from app.core.logging import configure_logging, get_logger
 from app.core.settings import get_settings
 from app.mqtt.client import start_mqtt, stop_mqtt
 from app.storage.redis import close_redis, get_redis
+from fastapi.staticfiles import StaticFiles
+import os
 
 # Configure logging
 configure_logging()
@@ -130,6 +132,9 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# static files
+app.mount("/static",StaticFiles(directory="static"),name="static")
 
 # Routers
 app.include_router(health.router)
