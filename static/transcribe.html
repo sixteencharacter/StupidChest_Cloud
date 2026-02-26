@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Signal Processor</title>
+    <style>
+        body { font-family: 'Segoe UI', sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; margin: 0; background: #0f172a; color: #f8fafc; }
+        .card { background: #1e293b; padding: 2rem; border-radius: 1rem; box-shadow: 0 10px 25px rgba(0,0,0,0.3); text-align: center; width: 350px; }
+        button { width: 100%; padding: 12px; margin: 10px 0; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; transition: all 0.2s; }
+        .record-btn { background: #ef4444; color: white; }
+        .record-btn:active { background: #dc2626; }
+        .play-btn { background: #10b981; color: white; display: none; }
+        #status { font-size: 0.9rem; color: #94a3b8; margin: 15px 0; min-height: 1.2em; }
+        #visualizer { width: 100%; height: 50px; background: #000; margin-top: 10px; border-radius: 4px; display: none; position: relative; overflow: hidden; }
+        .spike { position: absolute; bottom: 0; width: 2px; height: 80%; background: #00ff88; }
+    </style>
+</head>
+<body>
+
+    <div class="card">
+        <h3>Signal Processor</h3>
+        <p id="status">Ready to capture signal</p>
+        
+        <button id="recordBtn" class="record-btn">Start 5s Recording</button>
+        <div id="visualizer"></div>
+        <button id="playBtn" class="play-btn">Play Detected Pings</button>
+    </div>
+
+    <script>
+        const recordBtn = document.getElementById('recordBtn');
+        const playBtn = document.getElementById('playBtn');
+        const statusText = document.getElementById('status');
+        const visualizer = document.getElementById('visualizer');
+        
+        let lastIntervals = [];
+
+        // --- PLAYBACK ENGINE ---
+        const playSequence = (intervals) => {
+            const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            let timeTracker = audioCtx.currentTime;
+            visualizer.innerHTML = ''; // Clear old spikes
+
+            intervals.forEach((ms, index) => {
+                timeTracker += (ms / 1000);
+                
+                // 1. Schedule Audio
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(1000, timeTracker);
+                gain.gain.setValueAtTime(0, timeTracker);
+                gain.gain.linearRampToValueAtTime(0.2, timeTracker + 0.01);
+                gain.gain.exponentialRampToValueAtTime(0.0001, timeTracker + 0.1);
+                osc.connect(gain);
+                gain.connect(audioCtx.destination);
+                osc.start(timeTracker);
+                osc.stop(timeTracker + 0.2);
+
+                // 2. Schedule Visual Spike
+                setTimeout(() => {
+                    const spike = document.createElement('div');
+                    spike.className = 'spike';
+                    spike.style.left = (index * (100 / intervals.length)) + '%';
+                    visualizer.appendChild(spike);
+                }, (timeTracker - audioCtx.currentTime) * 1000);
+            });
+        };
+
+        // --- REAL API CALL ---
+        async function uploadAndFetchIntervals(blob) {
+            const formData = new FormData();
+            formData.append("audio_sample", blob, "audio_sample.webm");
+
+            try {
+                // REAL FETCH CALL
+                const response = await fetch("/api/v1/patterns/transcription", {
+                    method: "POST",
+                    body: formData
+                });
+
+                if (!response.ok) throw new Error(`Server error: ${response.status}`);
+
+                const data = await response.json(); 
+                // Assumes API returns exactly: [0, 280, 305, ...]
+                return data; 
+            } catch (error) {
+                console.error("API Error:", error);
+                // Optional: return dummy data for testing if API is down
+                // return [0, 280, 305, 151, 158, 314, 140, 259, 156, 276];
+                throw error;
+            }
+        }
+
+        // --- RECORDING LOGIC ---
+        recordBtn.addEventListener('click', async () => {
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                const mediaRecorder = new MediaRecorder(stream);
+                let audioChunks = [];
+
+                recordBtn.disabled = true;
+                statusText.innerText = "Recording...";
+
+                mediaRecorder.ondataavailable = (e) => audioChunks.push(e.data);
+
+                mediaRecorder.onstop = async () => {
+                    statusText.innerText = "Uploading to API...";
+                    const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
+                    
+                    try {
+                        lastIntervals = await uploadAndFetchIntervals(audioBlob);
+                        statusText.innerText = "Signal Received!";
+                        playBtn.style.display = "block";
+                        visualizer.style.display = "block";
+                    } catch (err) {
+                        statusText.innerText = "Upload failed. Check console.";
+                    } finally {
+                        recordBtn.disabled = false;
+                        stream.getTracks().forEach(t => t.stop());
+                    }
+                };
+
+                mediaRecorder.start();
+                setTimeout(() => mediaRecorder.stop(), 5000);
+
+            } catch (err) {
+                statusText.innerText = "Mic access denied.";
+                recordBtn.disabled = false;
+            }
+        });
+
+        playBtn.addEventListener('click', () => {
+            if (lastIntervals.length > 0) playSequence(lastIntervals);
+        });
+    </script>
+</body>
+</html>
