@@ -64,12 +64,26 @@ class TelemetryPayload(BaseModel):
 # --- Knock Live ---
 
 
-class KnockLiveData(BaseModel):
-    """Live knock sample data."""
+class KnockPoint(BaseModel):
+    """A single knock event within a capture window."""
 
-    samples: list[float] = Field(..., description="Accelerometer samples")
-    sampleRate: Optional[int] = Field(None, description="Sample rate in Hz")
-    axis: Optional[str] = Field(None, description="Axis (x/y/z or combined)")
+    tOffsetMs: int = Field(..., ge=0, description="Time offset from window start (ms)")
+    amp: float = Field(..., ge=0, description="Knock amplitude (normalized 0+)")
+
+
+class KnockFeatures(BaseModel):
+    """Derived features computed from knock windows."""
+
+    intervalsMs: Optional[list[int]] = Field(None, description="Time gaps between knocks (ms)")
+    energy: Optional[float] = Field(None, ge=0, description="Total energy of the window")
+
+
+class KnockLiveData(BaseModel):
+    """Live knock window data — per spec knock.live.v1."""
+
+    windowMs: Optional[int] = Field(None, ge=0, description="Capture window size (ms)")
+    knocks: list[KnockPoint] = Field(..., description="Individual knock events in the window")
+    features: Optional[KnockFeatures] = Field(None, description="Derived features (optional)")
 
 
 class KnockLivePayload(BaseModel):

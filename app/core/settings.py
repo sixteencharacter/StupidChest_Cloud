@@ -44,6 +44,11 @@ class Settings(BaseSettings):
     DESIRED_CONFIG_KEY_PREFIX: str = "knocklock:config:desired:"
     REPORTED_CONFIG_KEY_PREFIX: str = "knocklock:config:reported:"
 
+    # Pattern storage keys
+    PATTERN_KEY_PREFIX: str = "knocklock:pattern:"
+    PATTERN_INDEX_KEY: str = "knocklock:patterns:index"
+    DEVICE_ACTIVE_PATTERN_KEY_PREFIX: str = "knocklock:device_active_pattern:"
+
     # Phase 2: Additional settings
     ONLINE_TTL_SEC: int = 30  # Device considered offline after this many seconds
     MAX_PAYLOAD_BYTES: int = 256000  # Max MQTT payload size

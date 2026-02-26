@@ -162,13 +162,13 @@ async def handle_knock_live(device_id: str, payload_dict: dict[str, Any]) -> Non
         payload=payload_dict,
         event_id=payload.meta.eventId,
         device_ts=payload.meta.ts,
-        extra_fields={"sampleCount": len(payload.data.samples)},
+        extra_fields={"knockCount": len(payload.data.knocks)},
     )
 
     # Update device lastSeen (just touch the state)
     await upsert_state(device_id, {})
 
-    logger.debug(f"Knock live processed: device={device_id}, samples={len(payload.data.samples)}")
+    logger.debug(f"Knock live processed: device={device_id}, knocks={len(payload.data.knocks)}")
 
 
 async def handle_knock_result(device_id: str, payload_dict: dict[str, Any]) -> None:

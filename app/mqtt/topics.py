@@ -9,10 +9,10 @@ Topic Structure (as per Wireless.pdf):
 
 Subscribe Topics (device -> cloud):
     - knocklock/v1/devices/+/telemetry      - Device telemetry data
-    - knocklock/v1/devices/+/knock/live     - Live knock pattern streaming
-    - knocklock/v1/devices/+/knock/result   - Knock pattern recognition result
-    - knocklock/v1/devices/+/logs           - Device logs
-    - knocklock/v1/devices/+/commands/+/ack - Command acknowledgments
+    - knocklock/v1/devices/+/api/knock/live     - Live knock pattern streaming
+    - knocklock/v1/devices/+/api/knock/result   - Knock pattern recognition result
+    - knocklock/v1/devices/+/api/logs           - Device logs
+    - knocklock/v1/devices/+/api/commands/+/ack - Command acknowledgments
 
 Publish Topics (cloud -> device):
     - knocklock/v1/devices/{device_id}/commands/{command_id} - Send commands
@@ -26,14 +26,15 @@ from app.core.settings import get_settings
 
 # Topic suffix constants
 TOPIC_TELEMETRY = "telemetry"
-TOPIC_KNOCK_LIVE = "knock/live"
-TOPIC_KNOCK_RESULT = "knock/result"
-TOPIC_LOGS = "logs"
-TOPIC_COMMANDS = "commands"
-TOPIC_COMMANDS_ACK = "commands/+/ack"
+TOPIC_KNOCK_LIVE = "api/knock/live"
+TOPIC_KNOCK_RESULT = "api/knock/result"
+TOPIC_LOGS = "api/logs"
+TOPIC_COMMANDS = "api/commands"
+TOPIC_COMMANDS_ACK = "api/commands/+/ack"
 TOPIC_CONFIG = "config"
 TOPIC_CONFIG_DESIRED = "config/desired"
 TOPIC_CONFIG_REPORTED = "config/reported"
+TOPIC_PATTERN_DESIRED = "config/pattern/desired"
 
 
 def get_subscribe_topics() -> list[str]:
@@ -125,8 +126,8 @@ def parse_command_id_from_ack_topic(topic: str) -> Optional[str]:
     settings = get_settings()
     prefix = settings.MQTT_TOPIC_PREFIX.replace("/", r"\/")
 
-    # Pattern: prefix/{device_id}/commands/{command_id}/ack
-    pattern = rf"^{prefix}/[^/]+/commands/([^/]+)/ack$"
+    # Pattern: prefix/{device_id}/api/commands/{command_id}/ack
+    pattern = rf"^{prefix}/[^/]+/api/commands/([^/]+)/ack$"
     match = re.match(pattern, topic)
 
     if match:
@@ -146,13 +147,13 @@ def get_message_type_from_topic(topic: str) -> Optional[str]:
     """
     if topic.endswith("/telemetry"):
         return "telemetry"
-    elif topic.endswith("/knock/live"):
+    elif topic.endswith("/api/knock/live"):
         return "knock_live"
-    elif topic.endswith("/knock/result"):
+    elif topic.endswith("/api/knock/result"):
         return "knock_result"
-    elif topic.endswith("/logs"):
+    elif topic.endswith("/api/logs"):
         return "logs"
-    elif "/commands/" in topic and topic.endswith("/ack"):
+    elif "/api/commands/" in topic and topic.endswith("/ack"):
         return "command_ack"
     elif topic.endswith("/config/reported"):
         return "config_reported"

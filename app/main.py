@@ -112,7 +112,12 @@ app = FastAPI(
         },
         {
             "name": "Patterns",
-            "description": "Knock pattern CRUD (placeholder for future phase).",
+            "description": (
+                "Manage knock pattern registrations stored in Redis. "
+                "Supports create, list, get, update (versioned), delete, and activate. "
+                "Activating a pattern marks it as active and pushes it to the device "
+                "via MQTT retained message (config/pattern/desired)."
+            ),
         },
     ],
 )

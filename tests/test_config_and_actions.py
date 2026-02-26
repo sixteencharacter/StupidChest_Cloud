@@ -101,7 +101,7 @@ class TestConfigAPI:
             # Verify MQTT publish called with commands topic
             mock_pub.assert_called_once()
             pub_topic = mock_pub.call_args[0][0]
-            assert "/commands" in pub_topic
+            assert "/api/commands" in pub_topic
 
 
 # ──────────────────── Actions Tests ────────────────────

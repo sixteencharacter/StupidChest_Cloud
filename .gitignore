@@ -78,3 +78,6 @@ mosquitto/log/
 redis_data/
 mosquitto_data/
 mosquitto_log/
+
+# Snyk Security Extension - AI Rules (auto-generated)
+.github/instructions/snyk_rules.instructions.md
