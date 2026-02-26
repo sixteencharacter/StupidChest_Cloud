@@ -5,7 +5,7 @@ services:
       dockerfile: Dockerfile
     container_name: knocklock-api
     ports:
-      - "8000:8000"
+      - "0.0.0.0:8000:8000"
     environment:
       - APP_ENV=development
       - REDIS_URL=redis://redis:6379/0
@@ -19,6 +19,9 @@ services:
     volumes:
       - ./app:/app/app
       - ./tests:/app/tests
+    networks:
+      - redis_network
+      - mqtt_network
     restart: unless-stopped
 
   redis:
@@ -28,19 +31,37 @@ services:
       - "6381:6379"
     volumes:
       - redis_data:/data
+    networks:
+      - redis_network
     restart: unless-stopped
 
   mosquitto:
     image: eclipse-mosquitto:2
     container_name: knocklock-mosquitto
     ports:
-      - "1883:1883"
-      - "9001:9001"
+      - "0.0.0.0:1883:1883"
+      - "0.0.0.0:9001:9001"
     volumes:
       - ./mosquitto/config:/mosquitto/config
       - mosquitto_data:/mosquitto/data
       - mosquitto_log:/mosquitto/log
+    networks :
+      - mqtt_network
     restart: unless-stopped
+
+  redis_insight:
+    image: redis/redisinsight:latest
+    container_name: knocklock-redisinsight
+    ports:
+      - "5540:5540"
+    networks:
+      - redis_network
+
+networks:
+  redis_network:
+    driver: bridge
+  mqtt_network:
+    driver: bridge
 
 volumes:
   redis_data:
