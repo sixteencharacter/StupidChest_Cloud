@@ -112,9 +112,9 @@ async def get_events(
     end = "+"
 
     # Read more than `limit` to account for filtering
-    read_count = limit * 5
+    # read_count = limit * 5
 
-    entries = await client.xrange(settings.EVENT_STREAM_KEY, min=start, max=end, count=read_count)
+    entries = (await client.xrange(settings.EVENT_STREAM_KEY, min=start, max=end, count=None))[::-1]
 
     items: list[Event] = []
     last_stream_id: Optional[str] = None
