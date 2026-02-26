@@ -113,7 +113,7 @@ class TestRouteMessage:
     @pytest.mark.asyncio
     async def test_knock_result_handler_called(self):
         """Test that knock result messages are routed to handler."""
-        topic = "knocklock/v1/devices/test-device-001/knock/result"
+        topic = "knocklock/v1/devices/test-device-001/api/knock/result"
         payload = fixture_bytes("knock_result_payload.json")
 
         with patch("app.mqtt.handlers.get_settings") as mock_settings:

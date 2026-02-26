@@ -115,7 +115,8 @@ async def sync_config(deviceId: str) -> CommandIssued:
         },
     }
 
-    topic = build_topic(deviceId, "commands")
+    from app.mqtt.topics import TOPIC_COMMANDS
+    topic = build_topic(deviceId, TOPIC_COMMANDS)
     ok = await publisher.publish(topic, mqtt_payload, qos=1, retain=False)
     if not ok:
         raise HTTPException(

@@ -70,3 +70,43 @@ async def publish(
     except Exception as e:
         logger.error(f"Failed to publish to {topic}: {e}")
         return False
+
+
+async def publish_pattern_desired(
+    device_id: str,
+    pattern_record: "PatternRecord",
+) -> bool:
+    """
+    Publish the desired active pattern to a device via MQTT.
+
+    Uses retain=True so the device receives the latest pattern on reconnect.
+    The message is published to:
+        knocklock/v1/devices/{deviceId}/config/pattern/desired
+
+    Args:
+        device_id: Target device identifier
+        pattern_record: PatternRecord to push
+
+    Returns:
+        True if published successfully
+    """
+    from app.models.pattern import PatternRecord  # local import avoids circular dep
+    from app.mqtt.topics import TOPIC_PATTERN_DESIRED, build_topic
+
+    topic = build_topic(device_id, TOPIC_PATTERN_DESIRED)
+
+    payload = {
+        "meta": {
+            "schema": "device.pattern.desired.v1",
+            "deviceId": device_id,
+            "ts": datetime.now().isoformat(),
+        },
+        "data": {
+            "patternId": pattern_record.patternId,
+            "version": pattern_record.version,
+            "algo": pattern_record.algo.value,
+            "representation": pattern_record.representation.model_dump(exclude_none=True),
+        },
+    }
+
+    return await publish(topic, payload, qos=1, retain=True)

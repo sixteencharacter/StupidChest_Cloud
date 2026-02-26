@@ -1,0 +1,21 @@
+{
+  "meta": {
+    "schema": "knock.live.v1",
+    "deviceId": "test-device-001",
+    "ts": "2026-01-26T13:20:05.120Z",
+    "seq": 18421,
+    "sessionId": "sess-8f3a"
+  },
+  "data": {
+    "windowMs": 2000,
+    "knocks": [
+      {"tOffsetMs": 120, "amp": 0.62},
+      {"tOffsetMs": 540, "amp": 0.48},
+      {"tOffsetMs": 980, "amp": 0.71}
+    ],
+    "features": {
+      "intervalsMs": [420, 440],
+      "energy": 1.81
+    }
+  }
+}

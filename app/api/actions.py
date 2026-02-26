@@ -52,7 +52,8 @@ async def _issue_command(
         },
     }
 
-    topic = build_topic(device_id, "commands")
+    from app.mqtt.topics import TOPIC_COMMANDS
+    topic = build_topic(device_id, TOPIC_COMMANDS)
     ok = await publisher.publish(topic, mqtt_payload, qos=1, retain=False)
     if not ok:
         raise HTTPException(

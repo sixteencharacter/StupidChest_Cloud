@@ -38,12 +38,12 @@ class TestParseDeviceId:
 
     def test_parse_from_knock_topic(self):
         """Test parsing device ID from knock topic."""
-        device_id = parse_device_id_from_topic("knocklock/v1/devices/xyz789/knock/live")
+        device_id = parse_device_id_from_topic("knocklock/v1/devices/xyz789/api/knock/live")
         assert device_id == "xyz789"
 
     def test_parse_from_ack_topic(self):
         """Test parsing device ID from ack topic."""
-        device_id = parse_device_id_from_topic("knocklock/v1/devices/dev-001/commands/cmd-123/ack")
+        device_id = parse_device_id_from_topic("knocklock/v1/devices/dev-001/api/commands/cmd-123/ack")
         assert device_id == "dev-001"
 
     def test_parse_invalid_topic_returns_none(self):
@@ -58,7 +58,7 @@ class TestParseCommandId:
     def test_parse_command_id(self):
         """Test parsing command ID from ack topic."""
         command_id = parse_command_id_from_ack_topic(
-            "knocklock/v1/devices/abc123/commands/cmd-456/ack"
+            "knocklock/v1/devices/abc123/api/commands/cmd-456/ack"
         )
         assert command_id == "cmd-456"
 
@@ -80,22 +80,22 @@ class TestGetMessageType:
 
     def test_knock_live_type(self):
         """Test knock_live message type detection."""
-        msg_type = get_message_type_from_topic("knocklock/v1/devices/abc/knock/live")
+        msg_type = get_message_type_from_topic("knocklock/v1/devices/abc/api/knock/live")
         assert msg_type == "knock_live"
 
     def test_knock_result_type(self):
         """Test knock_result message type detection."""
-        msg_type = get_message_type_from_topic("knocklock/v1/devices/abc/knock/result")
+        msg_type = get_message_type_from_topic("knocklock/v1/devices/abc/api/knock/result")
         assert msg_type == "knock_result"
 
     def test_logs_type(self):
         """Test logs message type detection."""
-        msg_type = get_message_type_from_topic("knocklock/v1/devices/abc/logs")
+        msg_type = get_message_type_from_topic("knocklock/v1/devices/abc/api/logs")
         assert msg_type == "logs"
 
     def test_command_ack_type(self):
         """Test command_ack message type detection."""
-        msg_type = get_message_type_from_topic("knocklock/v1/devices/abc/commands/123/ack")
+        msg_type = get_message_type_from_topic("knocklock/v1/devices/abc/api/commands/123/ack")
         assert msg_type == "command_ack"
 
     def test_unknown_type_returns_none(self):
@@ -113,10 +113,10 @@ class TestGetSubscribeTopics:
 
         assert len(topics) == 6
         assert any("telemetry" in t for t in topics)
-        assert any("knock/live" in t for t in topics)
-        assert any("knock/result" in t for t in topics)
-        assert any("logs" in t for t in topics)
-        assert any("commands/+/ack" in t for t in topics)
+        assert any("api/knock/live" in t for t in topics)
+        assert any("api/knock/result" in t for t in topics)
+        assert any("api/logs" in t for t in topics)
+        assert any("api/commands/+/ack" in t for t in topics)
         assert any("config/reported" in t for t in topics)
 
     def test_topics_have_wildcard(self):

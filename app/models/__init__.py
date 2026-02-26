@@ -14,8 +14,10 @@ from app.models.mqtt import (
     CommandAckPayload,
     CommandStatus,
     KnockAction,
+    KnockFeatures,
     KnockLiveData,
     KnockLivePayload,
+    KnockPoint,
     KnockResultData,
     KnockResultPayload,
     LogData,
@@ -23,6 +25,17 @@ from app.models.mqtt import (
     LogsPayload,
     TelemetryData,
     TelemetryPayload,
+)
+from app.models.pattern import (
+    OperationAccepted,
+    PatternActivateRequest,
+    PatternAlgo,
+    PatternCreate,
+    PatternDetail,
+    PatternRecord,
+    PatternRepresentation,
+    PatternSummary,
+    PatternUpdate,
 )
 from app.models.state import (
     DeviceState,
@@ -39,6 +52,8 @@ __all__ = [
     # MQTT
     "TelemetryData",
     "TelemetryPayload",
+    "KnockPoint",
+    "KnockFeatures",
     "KnockLiveData",
     "KnockLivePayload",
     "KnockResultData",
@@ -56,4 +71,14 @@ __all__ = [
     "KnockResultSummary",
     "DeviceState",
     "DeviceStateResponse",
+    # Pattern
+    "PatternAlgo",
+    "PatternRepresentation",
+    "PatternCreate",
+    "PatternUpdate",
+    "PatternActivateRequest",
+    "PatternRecord",
+    "PatternSummary",
+    "PatternDetail",
+    "OperationAccepted",
 ]
