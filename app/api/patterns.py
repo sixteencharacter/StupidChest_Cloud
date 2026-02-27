@@ -264,18 +264,13 @@ async def transctibe_pattern(audio_sample : UploadFile = File()) :
     wavAudio = BytesIO()
     segment.export(wavAudio,format="wav")
     sr , sdat = scipy.io.wavfile.read(wavAudio)
-    t = 1 / sr  * np.arange(len(sdat)) * 1000
-    thresh = (sdat < np.percentile(sdat,.95))
-    t_n1 = t[np.where(thresh==1)][1:]
-    t_n = t[np.where(thresh==1)][:-1]
-    t_diff = t_n1 - t_n
-    t_diff = t_diff[t_diff > 30]
-    
-    if len(t_diff) == 0 :
+    envelope = np.abs(sdat)
+    min_distance_samples = int(200 * sr / 1000)
+    threshold = 0.2 * np.max(envelope)
+    peaks , _ = scipy.signal.find_peaks(envelope,height=threshold,distance=min_distance_samples)
+    if len(peaks) == 0 :
         return [0]
-
-    condition = ~((t_diff >= 0) & (t_diff <= 300))
-    t_diff = t_diff[condition]
-    
-    t_diff[0] = 0
-    return t_diff.astype(int).tolist()
+    peaks_times = peaks * 1000 / sr
+    intervals = np.diff(peaks_times,prepend=peaks_times[0])
+    # intervals[0] = 0
+    return intervals.astype(int).tolist()
