@@ -8,6 +8,7 @@ GET /api/v1/devices/{deviceId}/events/latest  -> PagedEvents (most recent)
 import json
 from datetime import datetime
 from typing import Optional
+import asyncio
 
 from fastapi import APIRouter, Query , WebSocket
 
@@ -168,13 +169,21 @@ async def handle_ws(websocket : WebSocket,deviceId : str) :
     await websocket.accept()
     client  = await get_redis()
     seenEventId = set()
+    prev = None
     while True :
         entries = await client.xrevrange(settings.EVENT_STREAM_KEY,max="+",min="-",count=5)
+        found = False
         for stream_id , data in entries :
             event = _parse_event(stream_id , data)
             if event.type == "knock_live" and deviceId == event.deviceId :
                 if event.eventId not in seenEventId :
                     seenEventId.add(event.eventId)
-                    await websocket.send_text(str(event.payload["data"]["knocks"][0]["amp"]))
+                    dat = event.payload["data"]["knocks"][0]["amp"]
+                    await websocket.send_text(str(dat))
+                    found = True
+                    prev = dat
                 break
+        if not found and prev != 0:
+            await websocket.send_text(str(0))
+            prev = 0
 
