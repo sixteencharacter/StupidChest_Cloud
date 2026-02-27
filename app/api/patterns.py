@@ -273,6 +273,9 @@ async def transctibe_pattern(audio_sample : UploadFile = File()) :
     
     if len(t_diff) == 0 :
         return [0]
+
+    condition = ~((t_diff >= 0) & (t_diff <= 300))
+    t_diff = t_diff[condition]
     
     t_diff[0] = 0
     return t_diff.astype(int).tolist()
