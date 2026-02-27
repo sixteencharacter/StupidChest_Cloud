@@ -108,3 +108,9 @@ async def get_knock_stats(
         bucket=bucket.value,
         series=series,
     )
+
+@router.get("/{dev_id}/snapshot",description=("return latest snapshot of the specified device"))
+async def return_dev_snapshot(dev_id : str) :
+    client = await get_redis()
+    raw_data = await client.get("knocklock:device_state:{}".format(dev_id))
+    return json.loads(raw_data)

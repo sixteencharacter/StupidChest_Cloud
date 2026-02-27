@@ -9,12 +9,15 @@ import json
 from datetime import datetime
 from typing import Optional
 
-from fastapi import APIRouter, Query
+from fastapi import APIRouter, Query , WebSocket
 
 from app.core.logging import get_logger
 from app.core.settings import get_settings
 from app.models.api import Event, PagedEvents
 from app.storage.redis import get_redis
+from app.core.settings import get_settings
+
+settings = get_settings()
 
 logger = get_logger(__name__)
 
@@ -159,3 +162,19 @@ async def get_latest_events(
                 break
 
     return PagedEvents(items=items, nextCursor=None)
+
+@router.websocket("/live")
+async def handle_ws(websocket : WebSocket,deviceId : str) :
+    await websocket.accept()
+    client  = await get_redis()
+    seenEventId = set()
+    while True :
+        entries = await client.xrevrange(settings.EVENT_STREAM_KEY,max="+",min="-",count=5)
+        for stream_id , data in entries :
+            event = _parse_event(stream_id , data)
+            if event.type == "knock_live" and deviceId == event.deviceId :
+                if event.eventId not in seenEventId :
+                    seenEventId.add(event.eventId)
+                    await websocket.send_text(str(event.payload["data"]["knocks"][0]["amp"]))
+                break
+
